@@ -193,33 +193,34 @@ class ExampleActions(UserActionsBase):
 
     def prepare_args(self, args):
         args = args.split(",")
-        new_args = []
+        new_args = {}
         for k, v in enumerate(args):
-            arg_parts = v.split(':')
-            new_args[arg_parts[0]] = new_args[arg_parts[1]].strip('"\'')
-        self.canonical_parent.log_message("cleaning!")
+            arg_parts = v.split('=')
+            new_args[arg_parts[0]] = arg_parts[1].strip('"\'')
         return new_args
 
     def crossfade_random(self, action_def, args):
-        #self.ambient = self.ambient or 1
-        """
-        args = args.split(",")
-        for k,v in enumerate(args):
-            args[k] = v.strip('"\'')
-        """
-        #args = self.prepare_args(args)
-"""
+        self.ambient = self.ambient or 1
+
+        args = self.prepare_args(args)
+
+        first = args['left']
+        second = args['right']
+
+        self.canonical_parent.show_message('here')
+
         if self.ambient == 1:
-            action = '"' + args['left'] + '"/PLAY RNDC;WAIT 1;"' + args['left'] + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + args['right'] + '"/VOL RAMP 100 0; "' + args['left'] + '"/VOL RAMP 100 100;'
+            action = '"' + first + '"/PLAY RNDC;WAIT 1;"' + first + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + second + '"/VOL RAMP 100 0; "' + first + '"/VOL RAMP 100 100;'
             #action = '"' + args[0] + '"/PLAY RNDC'
             self.ambient = 2
         else:
-            action = '"' + args['right'] + '"/PLAY RNDC; WAIT 1;"' + args['right'] + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + args['right'] + '"/VOL RAMP 100 100; "' + args['left'] + '"/VOL RAMP 100 0;'
+            action = '"' + second + '"/PLAY RNDC; WAIT 1;"' + second + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + second + '"/VOL RAMP 100 100; "' + first + '"/VOL RAMP 100 0;'
             self.ambient = 1
-"""
-        #self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
-        self.canonical_parent.show_message('Crossfade initiated')
+
+        self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
+        #self.canonical_parent.show_message('Crossfade initiated' + first + " and " + second)
         #self.canonical_parent.log_message(args[0].strip('"\''))
+
 
     def global_action_example(self, action_def, args):
 
