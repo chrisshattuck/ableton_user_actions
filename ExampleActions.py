@@ -22,18 +22,34 @@ class ExampleActions(UserActionsBase):
     def log(self, message):
         self.canonical_parent.log_message(message)
 
+    def run_action(self, action):
+        self.canonical_parent.clyphx_pro_component.trigger_action_list(run_action)
+
+    # TODO: If working between two tracks that aren't identical, this won't work. But it could.
     def crossfade_random(self, action_def, args):
 
         args = self.prepare_args(args)
         cf_id = args['left'] + args['right']
+        tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
 
         # Initialize crossfade
         if not cf_id in self.cf_vars:
-            self.cf_vars[cf_id] = args # Process arguments from x-action
+            self.cf_vars[cf_id] = args  # Process arguments from x-action
+
+            # Duplicate track if not duplicated
+            dupe_track_name = args['left'] + ' (COPY)'
+            duplicate_exists = False
+            for track in tracklist:
+                if track.name == dupe_track_name:
+                    duplicate_exists = True
+            if not duplicate_exists:
+
+
             self.cf_vars[cf_id]['playing_track_name'] = args['left'] # Set default playing
+            action = '"' + args['left'] + '"/ VOL 0;"' + args['right'] + '"/ VOL 0'
+            self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
 
         newoutput = ''
-        tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
 
         current_track = self.cf_vars[cf_id]['left']
         next_track = self.cf_vars[cf_id]['right']
@@ -72,7 +88,7 @@ class ExampleActions(UserActionsBase):
         action = 'WAIT 1;"' + next_track + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + current_track + '"/VOL RAMP 100 0; "' + next_track + '"/VOL RAMP 100 100;'
         self.cf_vars[cf_id]['playing_track_name'] = next_track
 
-        self.canonical_parent.clyphx_pro_component.trigger_action_list(action_0)
-        self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
+        self.run_action(action_0)
+        self.run_action(action)
         self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['playing_track_name'] if self.cf_vars[cf_id]['playing_track_name'] == self.cf_vars[cf_id]['left'] else self.cf_vars[cf_id]['right']
 
