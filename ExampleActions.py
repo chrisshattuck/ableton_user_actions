@@ -163,6 +163,7 @@ ________________________________________________________________________________
 # Import UserActionsBase to extend it.
 from ClyphX_Pro.clyphx_pro.UserActionsBase import UserActionsBase
 import time
+import pprint
 
 
 # Your class must extend UserActionsBase.
@@ -199,6 +200,9 @@ class ExampleActions(UserActionsBase):
             new_args[arg_parts[0]] = arg_parts[1].strip('"\'')
         return new_args
 
+    def log(self, message):
+        self.canonical_parent.log_message(message)
+
     def crossfade_random(self, action_def, args):
         self.ambient = self.ambient or 1
 
@@ -206,8 +210,25 @@ class ExampleActions(UserActionsBase):
 
         first = args['left']
         second = args['right']
+        track_name = "Ambient 1"
+        newoutput = ''
+        tracklist = list(self.song().tracks)  # Note making a list, won't work otherwise
 
-        self.canonical_parent.show_message('here')
+        try:
+            for track in tracklist:
+                newoutput += ('Track: %s\n' % track.name)
+                if track.name == track_name:
+                    newoutput += "THIS IS THE ONE\n"
+                    t = track
+                    playing_clip_slot = t.clip_slots[t.playing_slot_index]
+                    newoutput += ("PLAYING CLIP:" + playing_clip_slot.clip.name + "\n")
+
+        except Exception as e:
+            self.log('\n\nERROR:\n')
+            self.log(e)
+
+        self.log("\n\nOutput:" + newoutput + '\n-----\n')
+
 
         if self.ambient == 1:
             action = '"' + first + '"/PLAY RNDC;WAIT 1;"' + first + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + second + '"/VOL RAMP 100 0; "' + first + '"/VOL RAMP 100 100;'
@@ -224,31 +245,6 @@ class ExampleActions(UserActionsBase):
 
     def global_action_example(self, action_def, args):
 
-        if self.ambient != 0:
-            action = "4/PLAY RNDC;WAIT 1;4/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; 5/VOL RAMP 100 0; 4/VOL RAMP 100 100;"
-            self.ambient = 0
-        else:
-            action = "5/PLAY RNDC; WAIT 1;5/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; 5/VOL RAMP 100 100; 4/VOL RAMP 100 0;"
-            self.ambient = 1
-
-        self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
-
-        """
-        for i in range(5):
-            time.sleep(1)
-            self.canonical_parent.log_message("END SLEEP")
-        """
-        # self.canonical_parent.log_message("END SLEEP")
-        # self.global_action_example(self, action_def, args)
-
-
-        # [] 4/PLAY RNDC;WAIT 1;4/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; 5/VOL RAMP 100 0; 4/VOL RAMP 100 100; WAIT 100; 2 SEL; PLAY 2;
-
-        """ Logs whether the action was triggered via an X-Clip and shows 'Hello World'
-        preceded by any args in Live's status bar. """
-        # self.canonical_parent.log_message('%s: Args!' % args)
-        # some_var = some_var + 'test'
-        # self.canonical_parent.log_message(some_var)
         self.canonical_parent.show_message('%s: Hello Worl' % args)
 
     def track_action_example(self, action_def, args):
