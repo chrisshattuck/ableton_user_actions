@@ -79,12 +79,12 @@ class MyActions(UserActionsBase):
 
         self.call_count += 1
 
-        # Reset passed args
+        # Reset passed arguments
         if cf_id in self.cf_vars:
             for key, value in args.items():
                 self.cf_vars[cf_id][key] = value
 
-        # Run first time this runs on a track
+        # Run first time this action runs on a particular track
         else:
             self.cf_vars[cf_id] = args  # Process arguments from x-action
 
@@ -108,8 +108,10 @@ class MyActions(UserActionsBase):
                         break
                     if track.name == self.cf_vars[cf_id]['track']:
                         rename_next = True
+
             # Set default playing track
             self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['dupe']
+
             # Set volume on both tracks to 0
             action_list = [
                 'WAIT 5',
@@ -117,7 +119,7 @@ class MyActions(UserActionsBase):
                 '"' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0',
             ]
             self.run_action_list(action_list)
-        # End initialize
+        # End first time
 
         # Set the current and next tracks.
         current_track = self.cf_vars[cf_id]['track']
@@ -129,7 +131,7 @@ class MyActions(UserActionsBase):
         # Loop through tracks to find currently playing one
         for track in tracklist:
             if track.name == self.cf_vars[cf_id]['playing_track_name']:
-                # Need to loop through and find clip slots with clips
+                # Loop through and find clip slots containing clips
                 num_clips = 0
                 for slot in track.clip_slots:
                     if slot.has_clip:
@@ -168,6 +170,7 @@ class MyActions(UserActionsBase):
             '"' + current_track + '"/VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 0',
             '"' + next_track + '" / VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 100',
         ]
+        self.run_action(action_play_random)
         self.run_action_list(action_list)
 
         self.cf_vars[cf_id]['playing_track_name'] = next_track
