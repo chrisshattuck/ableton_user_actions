@@ -2,7 +2,7 @@
 from ClyphX_Pro.clyphx_pro.UserActionsBase import UserActionsBase
 import random
 
-class ExampleActions(UserActionsBase):
+class MyActions(UserActionsBase):
 
     def create_actions(self):
         self.add_global_action('crossfade_random', self.crossfade_random)
