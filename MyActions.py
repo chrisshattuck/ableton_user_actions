@@ -63,12 +63,15 @@ class MyActions(UserActionsBase):
     #   in and fade out the original.
     # - Subsequent plays repeat the random crossfade.
     # For this to work right, ensure the following:
-    # - Clips should be set to loop.
+    # - This is intended to work with looped clips.
     # - Clips in the duplicated track should be
     #   identical to the original.
     # - To repeat this, set it on a looping clip and use
     #   (LSEQ), as in:
     #   [] (LSEQ) crossfade_random track="Name of track"
+    # - Before using in a set, stop all tracks that will be used
+    #   this way, otherwise a small part of a clip will
+    #   play before the volume is set to 0.
     def crossfade_random(self, action_def, args):
         default_args = {
             'fadetime': 100
@@ -76,6 +79,7 @@ class MyActions(UserActionsBase):
         args = self.prepare_args(args, default_args)
         cf_id = args['track']
         tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
+        initialized = False
 
         self.call_count += 1
 
@@ -86,7 +90,11 @@ class MyActions(UserActionsBase):
 
         # Run first time this action runs on a particular track
         else:
+            initialized = True
             self.cf_vars[cf_id] = args  # Process arguments from x-action
+
+            # Set the volume to 0
+            self.run_action('"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0')
 
             # Duplicate track if not duplicated
             self.cf_vars[cf_id]['dupe'] = self.cf_vars[cf_id]['track'] + ' (COPY)'
@@ -112,13 +120,6 @@ class MyActions(UserActionsBase):
             # Set default playing track
             self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['dupe']
 
-            # Set volume on both tracks to 0
-            action_list = [
-                'WAIT 5',
-                '"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0',
-                '"' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0',
-            ]
-            self.run_action_list(action_list)
         # End first time
 
         # Set the current and next tracks.
@@ -141,25 +142,22 @@ class MyActions(UserActionsBase):
                 else:
                     playing_clip_index = track.playing_slot_index + 1
 
-                # Generate action for playing a random clip that is not
-                # the currently playing one and that is within the range
-                # of actual clips, not just slots.
-                playing_clip_index_before = playing_clip_index - 1
-                playing_clip_index_after = playing_clip_index + 1
-                action_before_clip = '"' + next_track + '"/PLAY RND 1-' + str(playing_clip_index_before) + ';'
-                action_after_clip = '"' + next_track + '"/PLAY RND ' + str(playing_clip_index_after) + '-' + str(num_clips)
-                # Will crash if it's 0 or more than the number of clips in track
-                wait = '(RPSEQ) '
-                if playing_clip_index_before < 1:
-                    action_before_clip = ''
-                    wait = 'WAIT 3; '
-                if playing_clip_index_after >= num_clips:
-                    action_after_clip = ''
-                    wait = 'WAIT 3; '
-                action_play_random = wait + action_before_clip + action_after_clip
-
-        if not 'fadetime' in args:
-            self.cf_vars[cf_id]['fadetime'] = 100
+                if initialized:
+                    action_play_random = 'WAIT 10;"' + self.cf_vars[cf_id]['track'] + '"/PLAY RND 1-' + str(num_clips)
+                else:
+                    # Generate action for playing a random clip that is not
+                    # the currently playing one and that is within the range
+                    # of actual clips, not just slots.
+                    playing_clip_index_before = playing_clip_index - 1
+                    playing_clip_index_after = playing_clip_index + 1
+                    action_before_clip = '"' + next_track + '"/PLAY RND 1-' + str(playing_clip_index_before) + ';'
+                    action_after_clip = '"' + next_track + '"/PLAY RND ' + str(playing_clip_index_after) + '-' + str(num_clips)
+                    # Will crash if it's 0 or more than the number of clips in track
+                    if playing_clip_index_before < 1:
+                        action_before_clip = ''
+                    if playing_clip_index_after > num_clips:
+                        action_after_clip = ''
+                    action_play_random = '(RPSEQ) ' + action_before_clip + action_after_clip
 
         # Generate action for changing the loop start time and
         # performing crossfade.
@@ -170,6 +168,7 @@ class MyActions(UserActionsBase):
             '"' + current_track + '"/VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 0',
             '"' + next_track + '" / VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 100',
         ]
+        self.log("RANDOM:" + action_play_random)
         self.run_action(action_play_random)
         self.run_action_list(action_list)
 
