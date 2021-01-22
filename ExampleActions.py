@@ -1,10 +1,7 @@
 # Import UserActionsBase to extend it.
 from ClyphX_Pro.clyphx_pro.UserActionsBase import UserActionsBase
-import time
-import pprint
+import random
 
-
-# Your class must extend UserActionsBase.
 class ExampleActions(UserActionsBase):
 
     def create_actions(self):
@@ -12,6 +9,8 @@ class ExampleActions(UserActionsBase):
         self.cf_vars = {}
         self.log_message = ''
 
+    # Converts arguments in the form of "key=value,key=value"
+    # to a dictionary.
     def prepare_args(self, args):
         args = args.split(",")
         new_args = {}
@@ -66,12 +65,16 @@ class ExampleActions(UserActionsBase):
                     if track.name == self.cf_vars[cf_id]['track']:
                         rename_next = True
 
-            self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['track'] # Set default playing
+            self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['dupe']  # Set default playing
             action_list = [
                 '"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0',
                 '"' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0',
             ]
-            self.run_action(self.prepare_action(action_list))
+            action = self.prepare_action(action_list)
+            self.run_action('WAIT 5; "' + self.cf_vars[cf_id]['track'] + '"/ VOL 0')
+            self.run_action('WAIT 5; "' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0')
+            self.log(action)
+        # End initialize
 
         current_track = self.cf_vars[cf_id]['track']
         next_track = self.cf_vars[cf_id]['dupe']
@@ -79,43 +82,51 @@ class ExampleActions(UserActionsBase):
             current_track = self.cf_vars[cf_id]['dupe']
             next_track = self.cf_vars[cf_id]['track']
 
-        try:
-            # Loop through tracks to find currently playing one
-            for track in tracklist:
-                if track.name == self.cf_vars[cf_id]['playing_track_name']:
-                    num_clips = len(track.clip_slots)
+        # Loop through tracks to find currently playing one
+        for track in tracklist:
+            if track.name == self.cf_vars[cf_id]['playing_track_name']:
+                # Need to loop through and find clip slots with clips
+                num_clips = 0
+                for slot in track.clip_slots:
+                    if slot.has_clip:
+                        num_clips += 1
+                if track.playing_slot_index == -2:  # -2 if there's no currently playing track
+                    playing_clip_index = random.randint(1, num_clips)
+                else:
                     playing_clip_index = track.playing_slot_index + 1
-                    playing_clip_index_before = playing_clip_index - 1
-                    playing_clip_index_after = playing_clip_index + 1
-                    action_before_clip = '"' + next_track + '"/PLAY RND 1-' + str(playing_clip_index_before) + ';'
-                    action_after_clip = '"' + next_track + '"/PLAY RND ' + str(playing_clip_index_after) + '-' + str(num_clips)
-                    # Will crash if it's 0 or more than the number of clips in track
-                    if playing_clip_index_before < 1:
-                        action_before_clip = ''
-                    if playing_clip_index_after == num_clips:
-                        action_after_clip = ''
-                    action_play_random = '(RPSEQ) ' + action_before_clip + action_after_clip
 
-                    # Could be helpful later
-                    # playing_clip_slot = track.clip_slots[track.playing_slot_index]
+                # Generate action for playing a random clip that is not
+                # the currently playing one and that is within the range
+                # of actual clips, not just slots.
+                playing_clip_index_before = playing_clip_index - 1
+                playing_clip_index_after = playing_clip_index + 1
+                action_before_clip = '"' + next_track + '"/PLAY RND 1-' + str(playing_clip_index_before) + ';'
+                action_after_clip = '"' + next_track + '"/PLAY RND ' + str(playing_clip_index_after) + '-' + str(num_clips)
+                # Will crash if it's 0 or more than the number of clips in track
+                wait = '(RPSEQ) '
+                if playing_clip_index_before < 1:
+                    action_before_clip = ''
+                    wait = 'WAIT 3; '
+                if playing_clip_index_after >= num_clips:
+                    action_after_clip = ''
+                    wait = 'WAIT 3; '
+                action_play_random = wait + action_before_clip + action_after_clip
+                self.log('PLAY RANDOM:' + action_play_random)
 
-        except Exception as e:
-            self.log('\n\nERROR:\n')
-            self.log(e)
-
-        self.output_log()
-
+        # Generate action for changing the loop start time and
+        # performing crossfade.
         action_list = [
-            'WAIT 3',
+            'WAIT 2',
             '"' + next_track + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end',
-            'WAIT 5',
+            'WAIT 4',
             '"' + current_track + '"/VOL RAMP 100 0',
             '"' + next_track + '" / VOL RAMP 100 100',
         ]
         action = self.prepare_action(action_list)
+        self.run_action(action_play_random)
+        self.run_action(action)
 
         self.cf_vars[cf_id]['playing_track_name'] = next_track
 
-        self.run_action(action_play_random)
-        self.run_action(action)
+        self.output_log()
 
