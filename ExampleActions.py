@@ -29,11 +29,14 @@ class ExampleActions(UserActionsBase):
     def run_action(self, action):
         self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
 
+    def prepare_action(self, action_list):
+        return ';'.join(action_list)
+
     # TODO: If working between two tracks that aren't identical, this won't work. But it could.
     def crossfade_random(self, action_def, args):
 
         args = self.prepare_args(args)
-        cf_id = args['left']
+        cf_id = args['track']
         tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
 
         # Initialize crossfade
@@ -41,8 +44,8 @@ class ExampleActions(UserActionsBase):
             self.cf_vars[cf_id] = args  # Process arguments from x-action
 
             # Duplicate track if not duplicated
-            dupe_track_name = self.cf_vars[cf_id]['left'] + ' (COPY)'
-            self.cf_vars[cf_id]['right'] = dupe_track_name
+            dupe_track_name = self.cf_vars[cf_id]['track'] + ' (COPY)'
+            self.cf_vars[cf_id]['dupe'] = dupe_track_name
             duplicate_exists = False
             for track in tracklist:
                 if track.name == dupe_track_name:
@@ -50,31 +53,31 @@ class ExampleActions(UserActionsBase):
             rename_next = False
 
             if not duplicate_exists:
-                self.run_action('"' + self.cf_vars[cf_id]['left'] + '"/ DUPE')
+                self.run_action('"' + self.cf_vars[cf_id]['track'] + '"/ DUPE')
                 tracklist = list(self.song().tracks)
                 rename_next = False
                 for i, track in enumerate(tracklist):
 
                     if rename_next:
                         rename_next = False
-                        self.log("THE INDEXfff:" + str(i))
                         track_index = i + 1
                         self.run_action(str(track_index) + '/ NAME "' + dupe_track_name + '"')
                         break
-                    if track.name == self.cf_vars[cf_id]['left']:
+                    if track.name == self.cf_vars[cf_id]['track']:
                         rename_next = True
 
-            self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['left'] # Set default playing
-            action = '"' + self.cf_vars[cf_id]['left'] + '"/ VOL 0;"' + self.cf_vars[cf_id]['right'] + '"/ VOL 0'
-            self.canonical_parent.clyphx_pro_component.trigger_action_list(action)
+            self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['track'] # Set default playing
+            action_list = [
+                '"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0',
+                '"' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0',
+            ]
+            self.run_action(self.prepare_action(action_list))
 
-        newoutput = ''
-
-        current_track = self.cf_vars[cf_id]['left']
-        next_track = self.cf_vars[cf_id]['right']
-        if self.cf_vars[cf_id]['playing_track_name'] == self.cf_vars[cf_id]['right']:
-            current_track = self.cf_vars[cf_id]['right']
-            next_track = self.cf_vars[cf_id]['left']
+        current_track = self.cf_vars[cf_id]['track']
+        next_track = self.cf_vars[cf_id]['dupe']
+        if self.cf_vars[cf_id]['playing_track_name'] == self.cf_vars[cf_id]['dupe']:
+            current_track = self.cf_vars[cf_id]['dupe']
+            next_track = self.cf_vars[cf_id]['track']
 
         try:
             # Loop through tracks to find currently playing one
@@ -91,7 +94,7 @@ class ExampleActions(UserActionsBase):
                         action_before_clip = ''
                     if playing_clip_index_after == num_clips:
                         action_after_clip = ''
-                    action_0 = '(RPSEQ) ' + action_before_clip + action_after_clip
+                    action_play_random = '(RPSEQ) ' + action_before_clip + action_after_clip
 
                     # Could be helpful later
                     # playing_clip_slot = track.clip_slots[track.playing_slot_index]
@@ -100,14 +103,19 @@ class ExampleActions(UserActionsBase):
             self.log('\n\nERROR:\n')
             self.log(e)
 
-        self.log(newoutput)
         self.output_log()
 
+        action_list = [
+            'WAIT 3',
+            '"' + next_track + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end',
+            'WAIT 5',
+            '"' + current_track + '"/VOL RAMP 100 0',
+            '"' + next_track + '" / VOL RAMP 100 100',
+        ]
+        action = self.prepare_action(action_list)
 
-        action = 'WAIT 1;"' + next_track + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end; WAIT 5; "' + current_track + '"/VOL RAMP 100 0; "' + next_track + '"/VOL RAMP 100 100;'
         self.cf_vars[cf_id]['playing_track_name'] = next_track
 
-        self.run_action(action_0)
+        self.run_action(action_play_random)
         self.run_action(action)
-        self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['playing_track_name'] if self.cf_vars[cf_id]['playing_track_name'] == self.cf_vars[cf_id]['left'] else self.cf_vars[cf_id]['right']
 
