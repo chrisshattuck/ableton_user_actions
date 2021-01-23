@@ -79,8 +79,7 @@ class MyActions(UserActionsBase):
     #   play before the volume is set to 0.
     def crossfade_random(self, action_def, args):
         default_args = {
-            'fadetime': 100,
-            'dupe': + args['track'] + ' (COPY)'
+            'fadetime': 100
         }
         args = self.prepare_args(args, default_args)
         cf_id = args['track']
@@ -88,21 +87,15 @@ class MyActions(UserActionsBase):
         initialized = False
 
         # Fadeout
-        """
+
         if 'fadeout' in args:
-            action_list = []
-            if args['fadeout'] == 'all':
-                for track, vals in self.cf_vars:
-                    action_list.append('"' + args['track'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0')
-                    action_list.append('"' + args['dupe'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0')
-            else:
-                action_list = [
-                    '"' + self.cf_vars[cf_id]['track'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0',
-                    '"' + self.cf_vars[cf_id]['dupe'] + '" / VOL RAMP ' + str(args['fadetime']) + ' 0',
-                ]
+            action_list = [
+                '"' + self.cf_vars[cf_id]['track'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0',
+                '"' + self.cf_vars[cf_id]['dupe'] + '" / VOL RAMP ' + str(args['fadetime']) + ' 0',
+            ]
             self.run_action_list(action_list)
             return
-        """
+
         # Reset passed arguments
         if cf_id in self.cf_vars:
             for key, value in args.items():
@@ -117,7 +110,7 @@ class MyActions(UserActionsBase):
             self.run_action('"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0')
 
             # Duplicate track if not duplicated
-            #self.cf_vars[cf_id]['dupe'] = self.cf_vars[cf_id]['track'] + ' (COPY)'
+            self.cf_vars[cf_id]['dupe'] = self.cf_vars[cf_id]['track'] + ' (COPY)'
             duplicate_exists = False
             for track in tracklist:
                 if track.name == self.cf_vars[cf_id]['dupe']:
