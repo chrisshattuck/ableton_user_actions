@@ -18,7 +18,12 @@ class MyActions(UserActionsBase):
         new_args = {}
         for k, v in enumerate(args):
             arg_parts = v.split('=')
+            # Set default for arguments with no value.
+            if len(arg_parts) == 1:
+                arg_parts.append('true')
+                self.canonical_parent.log_message("RUNNING")
             new_args[arg_parts[0]] = arg_parts[1].strip('"\'').strip()
+
         for k, v in default_args.items():
             if k not in new_args:
                 new_args[k] = v
@@ -74,13 +79,30 @@ class MyActions(UserActionsBase):
     #   play before the volume is set to 0.
     def crossfade_random(self, action_def, args):
         default_args = {
-            'fadetime': 100
+            'fadetime': 100,
+            'dupe': + args['track'] + ' (COPY)'
         }
         args = self.prepare_args(args, default_args)
         cf_id = args['track']
         tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
         initialized = False
 
+        # Fadeout
+        """
+        if 'fadeout' in args:
+            action_list = []
+            if args['fadeout'] == 'all':
+                for track, vals in self.cf_vars:
+                    action_list.append('"' + args['track'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0')
+                    action_list.append('"' + args['dupe'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0')
+            else:
+                action_list = [
+                    '"' + self.cf_vars[cf_id]['track'] + '"/VOL RAMP ' + str(args['fadetime']) + ' 0',
+                    '"' + self.cf_vars[cf_id]['dupe'] + '" / VOL RAMP ' + str(args['fadetime']) + ' 0',
+                ]
+            self.run_action_list(action_list)
+            return
+        """
         # Reset passed arguments
         if cf_id in self.cf_vars:
             for key, value in args.items():
@@ -95,7 +117,7 @@ class MyActions(UserActionsBase):
             self.run_action('"' + self.cf_vars[cf_id]['track'] + '"/ VOL 0')
 
             # Duplicate track if not duplicated
-            self.cf_vars[cf_id]['dupe'] = self.cf_vars[cf_id]['track'] + ' (COPY)'
+            #self.cf_vars[cf_id]['dupe'] = self.cf_vars[cf_id]['track'] + ' (COPY)'
             duplicate_exists = False
             for track in tracklist:
                 if track.name == self.cf_vars[cf_id]['dupe']:
