@@ -81,8 +81,6 @@ class MyActions(UserActionsBase):
         tracklist = list(self.song().tracks)  # Type as list, won't work otherwise
         initialized = False
 
-        self.call_count += 1
-
         # Reset passed arguments
         if cf_id in self.cf_vars:
             for key, value in args.items():
@@ -103,9 +101,12 @@ class MyActions(UserActionsBase):
                 if track.name == self.cf_vars[cf_id]['dupe']:
                     duplicate_exists = True
 
-            if not duplicate_exists:
+            if duplicate_exists:
+                # Silence duplicate track if it exists already
+                self.run_action('"' + self.cf_vars[cf_id]['dupe'] + '"/ VOL 0')
+            else:
                 self.run_action('"' + self.cf_vars[cf_id]['track'] + '"/ DUPE')
-                # Regenerate track list including duplicate
+                # Refresh track list to include duplicate
                 tracklist = list(self.song().tracks)
                 rename_next = False
                 for i, track in enumerate(tracklist):
@@ -119,8 +120,7 @@ class MyActions(UserActionsBase):
 
             # Set default playing track
             self.cf_vars[cf_id]['playing_track_name'] = self.cf_vars[cf_id]['dupe']
-
-        # End first time
+        # End first time running for this track
 
         # Set the current and next tracks.
         current_track = self.cf_vars[cf_id]['track']
@@ -143,7 +143,8 @@ class MyActions(UserActionsBase):
                     playing_clip_index = track.playing_slot_index + 1
 
                 if initialized:
-                    action_play_random = 'WAIT 10;"' + self.cf_vars[cf_id]['track'] + '"/PLAY RND 1-' + str(num_clips)
+                    # A simpler action for the first time run
+                    action_play_random = 'WAIT 1;"' + self.cf_vars[cf_id]['track'] + '"/PLAY RND 1-' + str(num_clips)
                 else:
                     # Generate action for playing a random clip that is not
                     # the currently playing one and that is within the range
@@ -152,7 +153,7 @@ class MyActions(UserActionsBase):
                     playing_clip_index_after = playing_clip_index + 1
                     action_before_clip = '"' + next_track + '"/PLAY RND 1-' + str(playing_clip_index_before) + ';'
                     action_after_clip = '"' + next_track + '"/PLAY RND ' + str(playing_clip_index_after) + '-' + str(num_clips)
-                    # Will crash if it's 0 or more than the number of clips in track
+                    # Will crash if it's less or more than the number of clips in track
                     if playing_clip_index_before < 1:
                         action_before_clip = ''
                     if playing_clip_index_after > num_clips:
@@ -162,9 +163,9 @@ class MyActions(UserActionsBase):
         # Generate action for changing the loop start time and
         # performing crossfade.
         action_list = [
-            'WAIT 2',
+            'WAIT 1',
             '"' + next_track + '"/CLIP START RND song.view.detail_clip.loop_start-song.view.detail_clip.loop_end',
-            'WAIT 4',
+            'WAIT 1',
             '"' + current_track + '"/VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 0',
             '"' + next_track + '" / VOL RAMP ' + str(self.cf_vars[cf_id]['fadetime']) + ' 100',
         ]
